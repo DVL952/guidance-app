@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GuidanceApp - Consultation Mystique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .mystic-glow {
+            box-shadow: 0 0 25px rgba(234, 179, 8, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-between p-6">
+
+    <!-- En-tête -->
+    <header class="text-center space-y-2 mt-4">
+        <h1 class="text-3xl font-serif text-amber-400 tracking-wider">Oracle Divinatoire</h1>
+        <p class="text-sm text-slate-400">Posez votre question à l'univers et laissez la guidance s'éclairer</p>
+    </header>
+
+    <!-- Formulaire principal -->
+    <main class="w-full max-w-lg bg-slate-900 border border-amber-500/30 rounded-2xl p-6 my-auto mystic-glow space-y-6">
+        
+        <!-- ID Utilisateur (pour le test avec Supabase) -->
+        <div>
+            <label class="block text-xs uppercase tracking-wider text-amber-400 font-medium mb-2">ID Utilisateur (Supabase)</label>
+            <input type="text" id="userId" placeholder="ex: uuid-de-l-utilisateur" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+        </div>
+
+        <!-- Question -->
+        <div>
+            <label class="block text-xs uppercase tracking-wider text-amber-400 font-medium mb-2">Votre Question</label>
+            <textarea id="question" rows="4" placeholder="Ex: Quel avenir professionnel m'attend ces prochains mois ?" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-4 text-sm text-slate-200 focus:outline-none focus:border-amber-500 resize-none"></textarea>
+            <p class="text-xs text-slate-500 mt-1">Rappel : Les questions de santé, justice et finances risquées sont automatiquement bloquées (Rouge).</p>
+        </div>
+
+        <!-- Bouton de soumission -->
+        <button onclick="submitQuestion()" id="submitBtn" class="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-medium rounded-lg transition shadow-lg shadow-amber-500/10 text-sm tracking-wide">
+            Consulter l'Oracle
+        </button>
+
+        <!-- Zone de Résultat -->
+        <div id="resultBox" class="hidden border rounded-xl p-4 space-y-3 transition-all">
+            <div class="flex items-center justify-between">
+                <span id="badgeColor" class="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider"></span>
+                <span id="creditsInfo" class="text-xs text-slate-400"></span>
+            </div>
+            <p id="resultText" class="text-sm text-slate-300 italic leading-relaxed"></p>
+        </div>
+    </main>
+
+    <!-- Pied de page -->
+    <footer class="text-xs text-slate-500 text-center mb-4">
+        GuidanceApp v1.0 • Sécurisé par IA & Supabase
+    </footer>
+
+    <script>
+        async function submitQuestion() {
+            const userId = document.getElementById('userId').value.trim();
+            const question = document.getElementById('question').value.trim();
+            const btn = document.getElementById('submitBtn');
+            const resultBox = document.getElementById('resultBox');
+            const badgeColor = document.getElementById('badgeColor');
+            const resultText = document.getElementById('resultText');
+            const creditsInfo = document.getElementById('creditsInfo');
+
+            if (!userId || !question) {
+                alert("Veuillez remplir l'ID utilisateur et votre question.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "L'Oracle consulte les astres...";
+            resultBox.classList.add('hidden');
+
+            try {
+                const response = await fetch('http://localhost:3000/api/guidance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, question })
+                });
+
+                const data = await response.json();
+
+                resultBox.classList.remove('hidden');
+
+                if (!response.ok) {
+                    // Gestion du rouge ou erreur (crédits insuffisants, etc.)
+                    badgeColor.className = "px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-red-950 text-red-400 border border-red-600/50";
+                    badgeColor.innerText = "🔴 Question Bloquée";
+                    resultText.innerText = data.error || "Une erreur est survenue.";
+                    creditsInfo.innerText = "";
+                    return;
+                }
+
+                // Affichage selon la couleur (Vert ou Orange)
+                if (data.color === 'vert') {
+                    badgeColor.className = "px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-emerald-950 text-emerald-400 border border-emerald-600/50";
+                    badgeColor.innerText = "🟢 Tirage Simple (1 Crédit)";
+                } else if (data.color === 'orange') {
+                    badgeColor.className = "px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-amber-950 text-amber-400 border border-amber-600/50";
+                    badgeColor.innerText = "🟠 Question Complexe (10 Crédits)";
+                }
+
+                resultText.innerText = `"${data.reading}"`;
+                creditsInfo.innerText = `Crédits restants : ${data.remainingCredits}`;
+
+            } catch (error) {
+                console.error(error);
+                resultBox.classList.remove('hidden');
+                badgeColor.className = "px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-red-950 text-red-400 border border-red-600/50";
+                badgeColor.innerText = "Erreur Système";
+                resultText.innerText = "Impossible de contacter le serveur backend.";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Consulter l'Oracle";
+            }
+        }
+    </script>
+</body>
+</html>
